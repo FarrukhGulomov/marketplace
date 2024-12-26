@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhone Marketplace Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .container { margin-top: 2rem; }
+        .card { margin-bottom: 1rem; box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); }
+        .stats-card { text-align: center; padding: 1.5rem; }
+        .stats-card i { font-size: 2rem; margin-bottom: 1rem; color: #0d6efd; }
+        .stats-card .number { font-size: 1.5rem; font-weight: bold; }
+        .table-responsive { margin-top: 1rem; }
+        .status-badge { font-size: 0.8rem; }
+        .action-buttons .btn { margin-right: 0.5rem; }
+        .navbar { box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-phone"></i> iPhone Marketplace Admin
+            </a>
+            <div class="d-flex">
+                <span class="navbar-text me-3">
+                    <i class="bi bi-person-circle"></i> Admin
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <i class="bi bi-people"></i>
+                    <div class="number" id="totalUsers">-</div>
+                    <div class="text-muted">Total Users</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <i class="bi bi-phone-fill"></i>
+                    <div class="number" id="totalAds">-</div>
+                    <div class="text-muted">Total Ads</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <i class="bi bi-hourglass-split"></i>
+                    <div class="number" id="pendingAds">-</div>
+                    <div class="text-muted">Pending Ads</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <i class="bi bi-check-circle"></i>
+                    <div class="number" id="activeAds">-</div>
+                    <div class="text-muted">Active Ads</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Advertisements -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-hourglass"></i> Pending Advertisements
+                </h5>
+                <button class="btn btn-sm btn-primary" onclick="fetchPendingAds()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Price</th>
+                                <th>Seller</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pendingAdsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Management -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="bi bi-people"></i> Users Management
+                </h5>
+                <button class="btn btn-sm btn-primary" onclick="fetchUsers()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Telegram ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Fetch and display pending advertisements
+        async function fetchPendingAds() {
+            try {
+                const response = await fetch('/api/advertisements/pending');
+                const ads = await response.json();
+                const tbody = document.getElementById('pendingAdsTable');
+                tbody.innerHTML = ads.map(ad => `
+                    <tr>
+                        <td>${ad.id}</td>
+                        <td>${ad.title}</td>
+                        <td>$${ad.price}</td>
+                        <td>${ad.user.username}</td>
+                        <td>${new Date(ad.createdAt).toLocaleString()}</td>
+                        <td class="action-buttons">
+                            <button class="btn btn-sm btn-success" onclick="approveAd(${ad.id})">
+                                <i class="bi bi-check-lg"></i> Approve
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="rejectAd(${ad.id})">
+                                <i class="bi bi-x-lg"></i> Reject
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+                updateStats();
+            } catch (error) {
+                console.error('Error fetching pending ads:', error);
+            }
+        }
+
+        // Fetch and display users
+        async function fetchUsers() {
+            try {
+                const response = await fetch('/api/users');
+                const users = await response.json();
+                const tbody = document.getElementById('usersTable');
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td>${user.telegramId}</td>
+                        <td>${user.username}</td>
+                        <td>${user.firstName ? user.firstName + ' ' + (user.lastName || '') : (user.lastName || '-')}</td>
+                        <td>${user.phoneNumber || '-'}</td>
+                        <td>
+                            <span class="badge ${user.role === 'ADMIN' ? 'bg-danger' : 'bg-primary'}">
+                                ${user.role}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge ${user.active ? 'bg-success' : 'bg-secondary'}">
+                                ${user.active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td class="action-buttons">
+                            ${user.active ? `
+                                <button class="btn btn-sm btn-warning" onclick="deactivateUser(${user.telegramId})">
+                                    <i class="bi bi-person-x"></i> Deactivate
+                                </button>
+                            ` : `
+                                <button class="btn btn-sm btn-success" onclick="activateUser(${user.telegramId})">
+                                    <i class="bi bi-person-check"></i> Activate
+                                </button>
+                            `}
+                            ${user.role !== 'ADMIN' ? `
+                                <button class="btn btn-sm btn-info" onclick="promoteToAdmin(${user.telegramId})">
+                                    <i class="bi bi-person-plus"></i> Make Admin
+                                </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+                updateStats();
+            } catch (error) {
+                console.error('Error fetching users:', error);
+            }
+        }
+
+        // Update statistics
+        async function updateStats() {
+            try {
+                const response = await fetch('/api/statistics');
+                const stats = await response.json();
+                document.getElementById('totalUsers').textContent = stats.totalUsers;
+                document.getElementById('totalAds').textContent = stats.totalAds;
+                document.getElementById('pendingAds').textContent = stats.pendingAds;
+                document.getElementById('activeAds').textContent = stats.activeAds;
+            } catch (error) {
+                console.error('Error fetching statistics:', error);
+            }
+        }
+
+        // Approve advertisement
+        async function approveAd(adId) {
+            try {
+                await fetch(`/api/advertisements/${adId}/approve`, { method: 'POST' });
+                fetchPendingAds();
+            } catch (error) {
+                console.error('Error approving ad:', error);
+            }
+        }
+
+        // Reject advertisement
+        async function rejectAd(adId) {
+            try {
+                await fetch(`/api/advertisements/${adId}/reject`, { method: 'POST' });
+                fetchPendingAds();
+            } catch (error) {
+                console.error('Error rejecting ad:', error);
+            }
+        }
+
+        // Deactivate user
+        async function deactivateUser(telegramId) {
+            try {
+                await fetch(`/api/users/${telegramId}/deactivate`, { method: 'POST' });
+                fetchUsers();
+            } catch (error) {
+                console.error('Error deactivating user:', error);
+            }
+        }
+
+        // Activate user
+        async function activateUser(telegramId) {
+            try {
+                await fetch(`/api/users/${telegramId}/activate`, { method: 'POST' });
+                fetchUsers();
+            } catch (error) {
+                console.error('Error activating user:', error);
+            }
+        }
+
+        // Promote user to admin
+        async function promoteToAdmin(telegramId) {
+            try {
+                await fetch(`/api/users/${telegramId}/promote`, { method: 'POST' });
+                fetchUsers();
+            } catch (error) {
+                console.error('Error promoting user:', error);
+            }
+        }
+
+        // Initial load
+        fetchPendingAds();
+        fetchUsers();
+        updateStats();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
